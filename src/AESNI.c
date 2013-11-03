@@ -36,8 +36,12 @@
 typedef unsigned char u8;
 
 typedef struct {
-	__m128i ek[MAXNR + 1];
-	__m128i dk[MAXNR + 1];
+	/** We allocate one item too many to fix up the alignment **/
+	__m128i buf_ek[MAXNR + 1 + 1];
+	__m128i buf_dk[MAXNR + 1 + 1];
+	/** These pointers must be 16-byte aligned **/
+	__m128i *ek;
+	__m128i *dk;
 	int rounds;
 } block_state;
 
@@ -149,6 +153,14 @@ static void aes_key_setup_dec(__m128i dk[], const __m128i ek[], int rounds)
     dk[0] = ek[rounds];
 }
 
+/**
+ * Return a pointer to next 16-byte aligned address.
+ */
+static void* align16(void* buf)
+{
+    return (void*)(((uintptr_t)buf & ~15) + 16);
+}
+
 static void block_init(block_state* self, unsigned char* key, int keylen)
 {
 	int nr = 0;
@@ -159,10 +171,12 @@ static void block_init(block_state* self, unsigned char* key, int keylen)
         default:
             PyErr_SetString(PyExc_ValueError,
                 "AES key must be either 16, 24, or 32 bytes long");
-		    return;
-	}
-	self->rounds = nr;
-	aes_key_setup_enc(self->ek, key, keylen);
+            return;
+    }
+    self->ek = (__m128i*)align16(self->buf_ek);
+    self->dk = (__m128i*)align16(self->buf_dk);
+    self->rounds = nr;
+    aes_key_setup_enc(self->ek, key, keylen);
     aes_key_setup_dec(self->dk, self->ek, nr);
 }
 

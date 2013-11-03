@@ -166,6 +166,9 @@ class PCTBuildExt (build_ext):
         if not ac.get("HAVE_WMMINTRIN_H"):
             # AES-NI instrincs not available
             self.__remove_extensions(["Crypto.Cipher._AESNI"])
+        elif not ac.get("HAVE_UINTPTR_T"):
+            # uintptr_t type not available
+            self.__remove_extensions(["Crypto.Cipher._AESNI"])
         elif ac.get("HAVE_MAES"):
             # -maes has to be passed to the compiler to use the AES-NI instrincs
             self.__add_extension_compile_option(["Crypto.Cipher._AESNI"],
